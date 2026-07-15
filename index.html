@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>龙哥领航 - AI个人IP定位诊断工具</title>
+<style>
+/* ========== 全局重置与基础样式 ========== */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --gradient-start: #667eea;
+    --gradient-mid: #764ba2;
+    --gradient-end: #f093fb;
+    --bg-dark: #0a0a1a;
+    --bg-card: rgba(255, 255, 255, 0.06);
+    --bg-card-hover: rgba(255, 255, 255, 0.1);
+    --border-glass: rgba(255, 255, 255, 0.12);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.65);
+    --text-muted: rgba(255, 255, 255, 0.4);
+    --accent: #f093fb;
+    --shadow-glow: 0 0 40px rgba(118, 75, 162, 0.3);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+    position: relative;
+}
+
+/* ========== 动态渐变背景 ========== */
+.bg-animated {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background: linear-gradient(-45deg, #0a0a1a, #1a0a2e, #16213e, #0f0c29);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* 浮动光球装饰 */
+.bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.25;
+    z-index: -1;
+    pointer-events: none;
+}
+
+.bg-orb-1 {
+    width: 400px;
+    height: 400px;
+    background: var(--gradient-start);
+    top: -100px;
+    left: -100px;
+    animation: floatOrb1 20s ease-in-out infinite;
+}
+
+.bg-orb-2 {
+    width: 350px;
+    height: 350px;
+    background: var(--gradient-end);
+    bottom: -80px;
+    right: -80px;
+    animation: floatOrb2 25s ease-in-out infinite;
+}
+
+.bg-orb-3 {
+    width: 300px;
+    height: 300px;
+    background: var(--gradient-mid);
+    top: 40%;
+    right: 10%;
+    animation: floatOrb3 18s ease-in-out infinite;
+}
+
+@keyframes floatOrb1 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(100px, 80px); }
+}
+
+@keyframes floatOrb2 {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(-80px, -60px); }
+}
+
+@keyframes floatOrb3 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-60px, 40px) scale(1.1); }
+}
+
+/* ========== 进度指示器 ========== */
+.progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    z-index: 1000;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gradient-start), var(--gradient-mid), var(--gradient-end));
+    width: 33.33%;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 15px rgba(240, 147, 251, 0.5);
+}
+
+.progress-indicator {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 1000;
+    font-size: 14px;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border-glass);
+}
+
+.progress-dots {
+    display: flex;
+    gap: 6px;
+}
+
+.progress-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+}
+
+.progress-dot.active {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    box-shadow: 0 0 10px rgba(240, 147, 251, 0.6);
+}
+
+.progress-dot.completed {
+    background: var(--gradient-start);
+}
+
+/* ========== 导航栏 ========== */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 40px;
+    z-index: 999;
+    transition: all 0.3s ease;
+}
+
+.nav-logo {
+    font-size: 22px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nav-logo::before {
+    content: "";
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(118, 75, 162, 0.5);
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    padding: 8px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+}
+
+/* ========== 页面容器与步骤切换 ========== */
+.steps-container {
+    min-height: 100vh;
+    position: relative;
+}
+
+.step-page {
+    display: none;
+    min-height: 100vh;
+    padding: 100px 40px 60px;
+    animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-page.active {
+    display: block;
+}
+
+.step-page.slide-left {
+    animation: slideInLeft 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.step-page.slide-right {
+    animation: slideInRight 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(60px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+    from { opacity: 0; transform: translateX(-60px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* ========== Hero 区域 ========== */
+.hero {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.hero-badge {
+    display: inline-block;
+    background: rgba(240, 147, 251, 0.12);
+    border: 1px solid rgba(240, 147, 251, 0.3);
+    color: var(--accent);
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+}
+
+.hero-title {
+    font-size: 52px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fff 0%, var(--gradient-start) 50%, var(--gradient-end) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    font-size: 20px;
+    color: var(--text-secondary);
+    margin-bottom: 50px;
+    font-weight: 300;
+}
+
+/* ========== 价值卡片 ========== */
+.value-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    max-width: 900px;
+    margin: 0 auto 50px;
+}
+
+.value-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 36px 28px;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.value-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(240, 147, 251, 0.08));
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.value-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(240, 147, 251, 0.3);
+    box-shadow: 0 20px 50px rgba(118, 75, 162, 0.2);
+}
+
+.value-card:hover::before {
+    opacity: 1;
+}
+
+.value-card-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 20px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    box-shadow: 0 8px 24px rgba(118, 75, 162, 0.3);
+    position: relative;
+    z-index: 1;
+}
+
+.value-card-title {
+    font-size: 19px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.value-card-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    position: relative;
+    z-index: 1;
+}
+
+/* ========== 主按钮（渐变 + 光效） ========== */
+.btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid), var(--gradient-end));
+    background-size: 200% 200%;
+    color: #fff;
+    border: none;
+    padding: 16px 48px;
+    border-radius: 30px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(118, 75, 162, 0.4);
+    animation: btnGradient 3s ease infinite;
+    letter-spacing: 1px;
+}
+
+@keyframes btnGradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+.btn-primary::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: btnShine 3s ease-in-out infinite;
+}
+
+@keyframes btnShine {
+    0% { left: -100%; }
+    50%, 100% { left: 200%; }
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(118, 75, 162, 0.6);
+}
+
+.btn-primary:active {
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    padding: 14px 36px;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+/* ========== 底部 ========== */
+.footer {
+    text-align: center;
+    padding: 30px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    margin-top: 40px;
+}
+
+/* ========== 表单页面 ========== */
+.form-container {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.form-header h2 {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff, var(--gradient-start));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.form-header p {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.form-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    border-radius: 24px;
+    padding: 40px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+}
+
+.form-group {
+    margin-bottom: 28px;
+}
+
+.form-label {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.form-label .required {
+    color: var(--accent);
+    margin-left: 4px;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: var(--text-primary);
+    font-size: 15px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.12);
+}
+
+.form-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form-select {
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff80' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 18px;
+    padding-right: 44px;
+}
+
+.form-select option {
+    background: #1a0a2e;
+    color: #fff;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* 多选标签 */
+.tag-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.tag-item {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 25px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.tag-item:hover {
+    border-color: rgba(240, 147, 251, 0.4);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+}
+
+.tag-item.selected {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+    transform: scale(1.05);
+}
+
+/* 单选按钮组 */
+.radio-group {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.radio-item {
+    text-align: center;
+    padding: 14px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    color: var(--text-secondary);
+    user-select: none;
+}
+
+.radio-item:hover {
+    border-color: rgba(240, 147, 251, 0.4);
+    color: var(--text-primary);
+}
+
+.radio-item.selected {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+    border-color: transparent;
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+}
+
+/* 字数统计 */
+.char-count {
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
+
+/* 表单错误提示 */
+.form-error {
+    color: #ff6b6b;
+    font-size: 13px;
+    margin-top: 6px;
+    display: none;
+}
+
+.form-error.show {
+    display: block;
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+.form-input.error,
+.form-select.error,
+.form-textarea.error {
+    border-color: #ff6b6b;
+}
+
+/* ========== 加载动画 ========== */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 26, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+.loading-spinner {
+    width: 70px;
+    height: 70px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top-color: var(--gradient-start);
+    border-right-color: var(--gradient-end);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 30px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    font-size: 20px;
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.loading-dots {
+    display: inline-block;
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: ""; }
+    40% { content: "."; }
+    60% { content: ".."; }
+    80%, 100% { content: "..."; }
+}
+
+.loading-dots::after {
+    content: "...";
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+/* ========== 报告页面 ========== */
+.report-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.report-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.report-header h2 {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff, var(--gradient-start));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.report-header p {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.report-user-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(240, 147, 251, 0.12);
+    border: 1px solid rgba(240, 147, 251, 0.3);
+    color: var(--accent);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    margin-top: 16px;
+}
+
+.report-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 24px;
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.report-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.report-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--gradient-start), var(--gradient-end));
+}
+
+.report-card-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.report-card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+/* IP方向推荐卡片 */
+.ip-direction {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 14px;
+    transition: all 0.3s ease;
+}
+
+.ip-direction:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(240, 147, 251, 0.3);
+}
+
+.ip-direction-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ip-direction-reason {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+/* 目标人群画像 */
+.audience-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.audience-tag {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+}
+
+.audience-desc {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+}
+
+/* 内容策略 */
+.content-strategy-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.content-strategy-item:last-child {
+    border-bottom: none;
+}
+
+.content-strategy-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.content-strategy-info h4 {
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+.content-strategy-info p {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.content-strategy-ratio {
+    display: inline-block;
+    background: rgba(240, 147, 251, 0.15);
+    color: var(--accent);
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    margin-top: 6px;
+}
+
+/* 变现路径 */
+.monetization-ladder {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.monetization-step {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+    padding: 18px 20px;
+    transition: all 0.3s ease;
+}
+
+.monetization-step:hover {
+    background: rgba(255, 255, 255, 0.07);
+    transform: translateX(6px);
+}
+
+.monetization-step-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.monetization-step-icon.free {
+    background: linear-gradient(135deg, #43e97b, #38f9d7);
+}
+
+.monetization-step-icon.low {
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.monetization-step-icon.mid {
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+}
+
+.monetization-step-icon.high {
+    background: linear-gradient(135deg, #fa709a, var(--gradient-end));
+}
+
+.monetization-step-content h4 {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.monetization-step-content p {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* 30天行动清单 */
+.action-week {
+    margin-bottom: 20px;
+}
+
+.action-week-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.action-week-title::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+}
+
+.action-list {
+    list-style: none;
+    padding-left: 14px;
+}
+
+.action-list li {
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 6px 0;
+    padding-left: 20px;
+    position: relative;
+    line-height: 1.6;
+}
+
+.action-list li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* 差异化优势 */
+.advantage-item {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+}
+
+.advantage-item h4 {
+    font-size: 15px;
+    color: var(--accent);
+    margin-bottom: 6px;
+}
+
+.advantage-item p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+/* CTA 区域 */
+.cta-section {
+    text-align: center;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(240, 147, 251, 0.1));
+    border: 1px solid rgba(240, 147, 251, 0.25);
+    border-radius: 24px;
+    padding: 40px;
+    margin-top: 16px;
+}
+
+.cta-section h3 {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.cta-section p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 15px;
+}
+
+.qr-placeholder {
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 20px;
+    border: 2px dashed rgba(240, 147, 251, 0.4);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.03);
+    transition: all 0.3s ease;
+}
+
+.qr-placeholder:hover {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.qr-placeholder-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.qr-placeholder-text {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.report-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+/* 关于工具弹窗 */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 26, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-overlay.show {
+    display: flex;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: linear-gradient(135deg, rgba(26, 10, 46, 0.95), rgba(16, 12, 41, 0.95));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    padding: 36px;
+    max-width: 480px;
+    width: 100%;
+    animation: modalSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modalSlide {
+    from { opacity: 0; transform: translateY(40px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-content h3 {
+    font-size: 22px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.modal-content p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.8;
+    margin-bottom: 12px;
+}
+
+.modal-close {
+    width: 100%;
+    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-mid));
+    border: none;
+    color: #fff;
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+    opacity: 0.9;
+    transform: translateY(-2px);
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 16px 20px;
+    }
+
+    .nav-logo {
+        font-size: 18px;
+    }
+
+    .nav-btn {
+        padding: 6px 14px;
+        font-size: 13px;
+    }
+
+    .progress-indicator {
+        top: 14px;
+        right: 14px;
+        font-size: 12px;
+        padding: 4px 12px;
+    }
+
+    .step-page {
+        padding: 80px 20px 40px;
+    }
+
+    .hero-title {
+        font-size: 32px;
+    }
+
+    .hero-subtitle {
+        font-size: 16px;
+    }
+
+    .value-cards {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .value-card {
+        padding: 28px 20px;
+    }
+
+    .form-card {
+        padding: 24px 20px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .radio-group {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .form-header h2,
+    .report-header h2 {
+        font-size: 26px;
+    }
+
+    .btn-primary {
+        padding: 14px 36px;
+        font-size: 16px;
+    }
+
+    .report-card {
+        padding: 24px 20px;
+    }
+
+    .cta-section {
+        padding: 28px 20px;
+    }
+
+    .report-actions {
+        flex-direction: column;
+    }
+
+    .report-actions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero-title {
+        font-size: 26px;
+    }
+
+    .tag-item {
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- 动态背景 -->
+<div class="bg-animated"></div>
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
+
+<!-- 进度条 -->
+<div class="progress-bar">
+    <div class="progress-bar-fill" id="progressBarFill"></div>
+</div>
+
+<!-- 进度指示器 -->
+<div class="progress-indicator">
+    <span id="progressText">1/3</span>
+    <div class="progress-dots">
+        <div class="progress-dot active" id="dot1"></div>
+        <div class="progress-dot" id="dot2"></div>
+        <div class="progress-dot" id="dot3"></div>
+    </div>
+</div>
+
+<!-- 导航栏 -->
+<nav class="navbar">
+    <div class="nav-logo">龙哥领航</div>
+    <button class="nav-btn" onclick="showAboutModal()">关于工具</button>
+</nav>
+
+<!-- 步骤容器 -->
+<div class="steps-container">
+
+    <!-- ========== 第一步：首页 ========== -->
+    <div class="step-page active" id="step1">
+        <div class="hero">
+            <div class="hero-badge">AI 驱动 · 精准诊断 · 60秒出报告</div>
+            <h1 class="hero-title">AI个人IP定位诊断工具</h1>
+            <p class="hero-subtitle">60秒找到最适合你的个人IP方向</p>
+
+            <div class="value-cards">
+                <div class="value-card">
+                    <div class="value-card-icon">&#127919;</div>
+                    <h3 class="value-card-title">精准定位</h3>
+                    <p class="value-card-desc">AI分析你的优势组合，从15+方向中找到最适合你的个人IP定位</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-card-icon">&#128221;</div>
+                    <h3 class="value-card-title">内容策略</h3>
+                    <p class="value-card-desc">量身定制内容栏目规划与发布节奏，让你的输出有的放矢</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-card-icon">&#128176;</div>
+                    <h3 class="value-card-title">变现路径</h3>
+                    <p class="value-card-desc">从0到变现的产品阶梯设计，清晰规划你的商业化路线图</p>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="goToStep(2)">
+                开始诊断
+                <span style="font-size:20px;">&#10142;</span>
+            </button>
+        </div>
+        <div class="footer">&copy; 2026 龙哥领航. 用AI打造个人创业IP</div>
+    </div>
+
+    <!-- ========== 第二步：诊断表单 ========== -->
+    <div class="step-page" id="step2">
+        <div class="form-container">
+            <div class="form-header">
+                <h2>IP定位诊断</h2>
+                <p>请如实填写以下信息，AI将为你生成专属诊断报告</p>
+            </div>
+
+            <div class="form-card">
+                <!-- 昵称 -->
+                <div class="form-group">
+                    <label class="form-label">你的昵称<span class="required">*</span></label>
+                    <input type="text" class="form-input" id="nickname" placeholder="如何称呼你？" maxlength="20">
+                    <div class="form-error" id="error-nickname">请输入你的昵称</div>
+                </div>
+
+                <!-- 职业与工作年限 -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">当前职业/岗位<span class="required">*</span></label>
+                        <input type="text" class="form-input" id="job" placeholder="如：产品经理、运营总监" maxlength="30">
+                        <div class="form-error" id="error-job">请输入当前职业</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">工作年限<span class="required">*</span></label>
+                        <input type="number" class="form-input" id="experience" placeholder="1-30" min="1" max="30">
+                        <div class="form-error" id="error-experience">请输入1-30之间的数字</div>
+                    </div>
+                </div>
+
+                <!-- 核心技能 -->
+                <div class="form-group">
+                    <label class="form-label">核心技能（可多选）<span class="required">*</span></label>
+                    <div class="tag-group" id="skillsGroup">
+                        <div class="tag-item" data-value="运营">运营</div>
+                        <div class="tag-item" data-value="产品">产品</div>
+                        <div class="tag-item" data-value="技术">技术</div>
+                        <div class="tag-item" data-value="设计">设计</div>
+                        <div class="tag-item" data-value="销售">销售</div>
+                        <div class="tag-item" data-value="写作">写作</div>
+                        <div class="tag-item" data-value="教学">教学</div>
+                        <div class="tag-item" data-value="管理">管理</div>
+                        <div class="tag-item" data-value="数据分析">数据分析</div>
+                        <div class="tag-item" data-value="视频制作">视频制作</div>
+                        <div class="tag-item" data-value="其他">其他</div>
+                    </div>
+                    <div class="form-error" id="error-skills">请至少选择1项核心技能</div>
+                </div>
+
+                <!-- 所在行业 -->
+                <div class="form-group">
+                    <label class="form-label">所在行业<span class="required">*</span></label>
+                    <select class="form-select" id="industry">
+                        <option value="">请选择你的行业</option>
+                        <option value="互联网">互联网</option>
+                        <option value="金融">金融</option>
+                        <option value="教育">教育</option>
+                        <option value="电商">电商</option>
+                        <option value="媒体">媒体</option>
+                        <option value="制造业">制造业</option>
+                        <option value="服务业">服务业</option>
+                        <option value="医疗健康">医疗健康</option>
+                        <option value="其他">其他</option>
+                    </select>
+                    <div class="form-error" id="error-industry">请选择所在行业</div>
+                </div>
+
+                <!-- 最擅长的事情 -->
+                <div class="form-group">
+                    <label class="form-label">你最擅长的事情<span class="required">*</span></label>
+                    <textarea class="form-textarea" id="strengths" placeholder="详细描述你的核心优势和擅长领域，例如：擅长用数据分析驱动业务增长，曾操盘过百万级用户增长项目..." maxlength="500"></textarea>
+                    <div class="char-count"><span id="strengthsCount">0</span>/500</div>
+                    <div class="form-error" id="error-strengths">请描述你最擅长的事情</div>
+                </div>
+
+                <!-- 目标 -->
+                <div class="form-group">
+                    <label class="form-label">你想通过个人IP实现什么目标（可多选）<span class="required">*</span></label>
+                    <div class="tag-group" id="goalsGroup">
+                        <div class="tag-item" data-value="涨粉变现">涨粉变现</div>
+                        <div class="tag-item" data-value="知识付费">知识付费</div>
+                        <div class="tag-item" data-value="品牌合作">品牌合作</div>
+                        <div class="tag-item" data-value="求职背书">求职背书</div>
+                        <div class="tag-item" data-value="副业收入">副业收入</div>
+                        <div class="tag-item" data-value="打造影响力">打造影响力</div>
+                        <div class="tag-item" data-value="其他">其他</div>
+                    </div>
+                    <div class="form-error" id="error-goals">请至少选择1个目标</div>
+                </div>
+
+                <!-- 时间投入 -->
+                <div class="form-group">
+                    <label class="form-label">每周能投入多少时间<span class="required">*</span></label>
+                    <div class="radio-group" id="timeGroup">
+                        <div class="radio-item" data-value="5小时以内">5小时以内</div>
+                        <div class="radio-item" data-value="5-10小时">5-10小时</div>
+                        <div class="radio-item" data-value="10-20小时">10-20小时</div>
+                        <div class="radio-item" data-value="20小时以上">20小时以上</div>
+                    </div>
+                    <div class="form-error" id="error-time">请选择每周可投入的时间</div>
+                </div>
+
+                <!-- 提交按钮 -->
+                <button class="btn-primary" style="width:100%; margin-top:10px;" onclick="submitForm()">
+                    生成诊断报告
+                    <span style="font-size:20px;">&#10142;</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 第三步：诊断报告 ========== -->
+    <div class="step-page" id="step3">
+        <div class="report-container">
+            <div class="report-header">
+                <h2>你的专属IP诊断报告</h2>
+                <p>基于你的信息，AI为你生成以下IP定位建议</p>
+                <div class="report-user-info" id="reportUserInfo"></div>
+            </div>
+            <div id="reportContent"></div>
+
+            <!-- CTA 区域 -->
+            <div class="cta-section">
+                <h3>扫码加微信，获取1v1深度咨询</h3>
+                <p>龙哥领航 · AI轻创业导师 | 字节/美团/滴滴/贝壳多年大厂运营经验</p>
+                <div class="qr-placeholder">
+                    <div class="qr-placeholder-icon">&#128279;</div>
+                    <div class="qr-placeholder-text">微信二维码占位</div>
+                </div>
+                <p style="font-size:13px; color:var(--text-muted);">扫描二维码，领取你的专属IP打造方案</p>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="report-actions">
+                <button class="btn-secondary" onclick="goToStep(1)">
+                    <span>&#8634;</span> 重新诊断
+                </button>
+            </div>
+        </div>
+        <div class="footer">&copy; 2026 龙哥领航. 用AI打造个人创业IP</div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">AI正在为你分析<span class="loading-dots"></span></div>
+</div>
+
+<!-- 关于工具弹窗 -->
+<div class="modal-overlay" id="aboutModal">
+    <div class="modal-content">
+        <h3>关于龙哥领航</h3>
+        <p><strong>龙哥领航</strong>是专注于AI轻创业领域的个人IP打造品牌，由拥有字节、美团、滴滴、贝壳多年大厂运营经验的资深操盘手创立。</p>
+        <p>本工具基于AI规则引擎，通过分析你的技能组合、行业背景和发展目标，在60秒内为你生成结构化的个人IP定位诊断报告，涵盖IP方向、目标人群、内容策略、变现路径和30天行动清单。</p>
+        <p>官网：zhichangm.cn</p>
+        <button class="modal-close" onclick="closeAboutModal()">知道了</button>
+    </div>
+</div>
+
+<script>
+// ========== 全局状态管理 ==========
+var currentStep = 1;
+var selectedSkills = [];
+var selectedGoals = [];
+var selectedTime = '';
+var formData = {};
+
+// ========== 步骤切换逻辑 ==========
+function goToStep(step) {
+    var currentEl = document.getElementById('step' + currentStep);
+    var targetEl = document.getElementById('step' + step);
+
+    // 移除当前页面的 active 类
+    currentEl.classList.remove('active');
+
+    // 根据方向添加滑动动画
+    if (step > currentStep) {
+        targetEl.classList.add('active', 'slide-left');
+    } else {
+        targetEl.classList.add('active', 'slide-right');
+    }
+
+    // 清除动画类
+    setTimeout(function() {
+        targetEl.classList.remove('slide-left', 'slide-right');
+    }, 600);
+
+    currentStep = step;
+    updateProgress(step);
+
+    // 滚动到顶部
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // 如果是报告页，触发卡片动画
+    if (step === 3) {
+        animateReportCards();
+    }
+}
+
+// ========== 更新进度指示器 ==========
+function updateProgress(step) {
+    var fillWidth = (step / 3) * 100;
+    document.getElementById('progressBarFill').style.width = fillWidth + '%';
+    document.getElementById('progressText').textContent = step + '/3';
+
+    // 更新圆点状态
+    for (var i = 1; i <= 3; i++) {
+        var dot = document.getElementById('dot' + i);
+        dot.classList.remove('active', 'completed');
+        if (i < step) {
+            dot.classList.add('completed');
+        } else if (i === step) {
+            dot.classList.add('active');
+        }
+    }
+}
+
+// ========== 多选标签交互 ==========
+function initTagGroup(groupId, selectionArray) {
+    var group = document.getElementById(groupId);
+    var items = group.querySelectorAll('.tag-item');
+    items.forEach(function(item) {
+        item.addEventListener('click', function() {
+            var value = this.getAttribute('data-value');
+            if (this.classList.contains('selected')) {
+                this.classList.remove('selected');
+                var index = selectionArray.indexOf(value);
+                if (index > -1) {
+                    selectionArray.splice(index, 1);
+                }
+            } else {
+                this.classList.add('selected');
+                selectionArray.push(value);
+            }
+        });
+    });
+}
+
+// 初始化技能和目标多选
+initTagGroup('skillsGroup', selectedSkills);
+initTagGroup('goalsGroup', selectedGoals);
+
+// ========== 单选按钮交互 ==========
+var timeItems = document.querySelectorAll('#timeGroup .radio-item');
+timeItems.forEach(function(item) {
+    item.addEventListener('click', function() {
+        timeItems.forEach(function(i) { i.classList.remove('selected'); });
+        this.classList.add('selected');
+        selectedTime = this.getAttribute('data-value');
+    });
+});
+
+// ========== 字数统计 ==========
+var strengthsTextarea = document.getElementById('strengths');
+strengthsTextarea.addEventListener('input', function() {
+    document.getElementById('strengthsCount').textContent = this.value.length;
+});
+
+// ========== 表单验证 ==========
+function showFieldError(fieldId, errorId, show) {
+    var field = document.getElementById(fieldId);
+    var error = document.getElementById(errorId);
+    if (show) {
+        field.classList.add('error');
+        error.classList.add('show');
+    } else {
+        field.classList.remove('error');
+        error.classList.remove('show');
+    }
+}
+
+function validateForm() {
+    var isValid = true;
+
+    // 昵称
+    var nickname = document.getElementById('nickname').value.trim();
+    if (!nickname) {
+        showFieldError('nickname', 'error-nickname', true);
+        isValid = false;
+    } else {
+        showFieldError('nickname', 'error-nickname', false);
+    }
+
+    // 职业
+    var job = document.getElementById('job').value.trim();
+    if (!job) {
+        showFieldError('job', 'error-job', true);
+        isValid = false;
+    } else {
+        showFieldError('job', 'error-job', false);
+    }
+
+    // 工作年限
+    var experience = document.getElementById('experience').value;
+    if (!experience || experience < 1 || experience > 30) {
+        showFieldError('experience', 'error-experience', true);
+        isValid = false;
+    } else {
+        showFieldError('experience', 'error-experience', false);
+    }
+
+    // 核心技能
+    if (selectedSkills.length === 0) {
+        document.getElementById('error-skills').classList.add('show');
+        isValid = false;
+    } else {
+        document.getElementById('error-skills').classList.remove('show');
+    }
+
+    // 行业
+    var industry = document.getElementById('industry').value;
+    if (!industry) {
+        showFieldError('industry', 'error-industry', true);
+        isValid = false;
+    } else {
+        showFieldError('industry', 'error-industry', false);
+    }
+
+    // 擅长的事情
+    var strengths = document.getElementById('strengths').value.trim();
+    if (!strengths) {
+        showFieldError('strengths', 'error-strengths', true);
+        isValid = false;
+    } else {
+        showFieldError('strengths', 'error-strengths', false);
+    }
+
+    // 目标
+    if (selectedGoals.length === 0) {
+        document.getElementById('error-goals').classList.add('show');
+        isValid = false;
+    } else {
+        document.getElementById('error-goals').classList.remove('show');
+    }
+
+    // 时间投入
+    if (!selectedTime) {
+        document.getElementById('error-time').classList.add('show');
+        isValid = false;
+    } else {
+        document.getElementById('error-time').classList.remove('show');
+    }
+
+    return isValid;
+}
+
+// ========== 表单提交 ==========
+function submitForm() {
+    if (!validateForm()) {
+        return;
+    }
+
+    // 收集表单数据
+    formData = {
+        nickname: document.getElementById('nickname').value.trim(),
+        job: document.getElementById('job').value.trim(),
+        experience: parseInt(document.getElementById('experience').value),
+        skills: selectedSkills.slice(),
+        industry: document.getElementById('industry').value,
+        strengths: document.getElementById('strengths').value.trim(),
+        goals: selectedGoals.slice(),
+        time: selectedTime
+    };
+
+    // 显示加载动画
+    document.getElementById('loadingOverlay').classList.add('show');
+
+    // 模拟3秒AI分析
+    setTimeout(function() {
+        document.getElementById('loadingOverlay').classList.remove('show');
+        generateReport();
+        goToStep(3);
+    }, 3000);
+}
+
+// ================================================================
+// ========== 报告生成规则引擎 ==========
+// ================================================================
+
+// IP方向匹配规则库（15种匹配规则）
+var ipDirectionRules = [
+    {
+        match: function(d) { return d.skills.includes('运营') && d.industry === '互联网'; },
+        name: '增长黑客实战派',
+        reason: '你具备运营能力且深耕互联网行业，可以将用户增长、裂变获客、数据驱动的实战经验体系化输出，成为增长领域的实战型IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('技术') && d.industry === '教育'; },
+        name: '技术布道者',
+        reason: '技术背景叠加教育行业经验，你擅长将复杂技术概念转化为易懂内容，适合打造技术科普与教学型IP，帮助更多技术新人快速成长。'
+    },
+    {
+        match: function(d) { return d.skills.includes('设计') && d.industry === '电商'; },
+        name: '视觉营销专家',
+        reason: '设计能力与电商行业的结合是稀缺组合，你可以分享如何用视觉设计提升转化率、打造高颜值品牌，成为电商视觉营销领域的内容IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('写作') && d.industry === '媒体'; },
+        name: '内容创作达人',
+        reason: '写作功底深厚且身处媒体行业，你天然具备内容敏感度，适合打造以文字为核心的内容IP，分享爆款内容创作方法论。'
+    },
+    {
+        match: function(d) { return d.skills.includes('销售') && d.industry === '服务业'; },
+        name: '销售成交教练',
+        reason: '销售技能在服务业中的实战经验极具价值，你可以输出销售技巧、客户心理学和成交方法论，打造销售培训型IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('数据分析') && d.industry === '金融'; },
+        name: '数据驱动决策专家',
+        reason: '数据分析能力在金融行业是核心竞争力，你可以分享如何用数据洞察市场趋势、辅助投资决策，成为金融数据分析领域的权威IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('产品') && d.industry === '互联网'; },
+        name: '产品操盘手',
+        reason: '产品能力加上互联网行业经验，你拥有从0到1打造产品的完整视角，适合分享产品方法论、需求管理和用户体验设计。'
+    },
+    {
+        match: function(d) { return d.skills.includes('教学') && d.industry === '教育'; },
+        name: '知识传递者',
+        reason: '教学技能与教育行业的深度融合，你具备体系化输出知识的能力，适合打造在线教育IP，将专业知识转化为可交付的课程产品。'
+    },
+    {
+        match: function(d) { return d.skills.includes('管理') && d.industry === '制造业'; },
+        name: '精益管理导师',
+        reason: '管理经验在制造业的实战积累是独特优势，你可以分享团队管理、精益生产和组织效能提升的实战经验，打造管理咨询型IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('视频制作') && d.industry === '媒体'; },
+        name: '短视频创作达人',
+        reason: '视频制作能力与媒体行业的结合，你具备用视觉语言讲故事的核心能力，适合打造短视频内容IP，分享创作技巧和行业洞察。'
+    },
+    {
+        match: function(d) { return d.skills.includes('运营') && d.industry === '电商'; },
+        name: '电商运营操盘手',
+        reason: '运营技能在电商行业的实战经验极具商业价值，你可以分享店铺运营、流量获取、转化优化等实操方法，成为电商运营领域的内容IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('技术') && d.industry === '金融'; },
+        name: '金融科技专家',
+        reason: '技术背景深耕金融行业，你处于金融科技的前沿交叉领域，适合分享技术如何赋能金融业务、金融产品架构设计等深度内容。'
+    },
+    {
+        match: function(d) { return d.skills.includes('写作') && d.industry === '互联网'; },
+        name: '文案策划高手',
+        reason: '写作能力在互联网行业的应用场景广泛，你可以分享文案写作技巧、用户心理洞察和内容营销策略，成为文案策划领域的内容IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('数据分析') && d.industry === '互联网'; },
+        name: '增长数据分析师',
+        reason: '数据分析能力在互联网行业是驱动增长的核心，你可以分享如何用数据指导运营决策、搭建数据指标体系，成为数据增长领域的专家IP。'
+    },
+    {
+        match: function(d) { return d.skills.includes('管理') && d.experience >= 5; },
+        name: '管理实战教练',
+        reason: '你拥有丰富的管理经验和较长的工作年限，可以体系化输出管理方法论、团队建设和领导力发展经验，打造管理咨询型IP。'
+    }
+];
+
+// 通用IP方向（当没有匹配到特定规则时的兜底推荐）
+var genericDirections = [
+    {
+        name: '行业经验分享者',
+        reason: '基于你在' + '{industry}' + '行业的积累，可以分享行业洞察、职场经验和实战方法，成为该领域的知识型IP。'
+    },
+    {
+        name: '技能实战导师',
+        reason: '你具备' + '{skills}' + '等核心技能，可以将这些技能的实战经验体系化输出，帮助同行和新人少走弯路。'
+    }
+];
+
+// 目标人群匹配规则
+var audienceRules = {
+    '互联网': { tags: ['创业者', '产品经理', '运营新人', '技术从业者'], desc: '关注互联网行业动态、产品方法论和增长策略的从业者和创业者群体。' },
+    '金融': { tags: ['投资者', '金融从业者', '理财小白', '企业财务人员'], desc: '对金融市场趋势、投资理财和数据分析感兴趣的金融生态圈人群。' },
+    '教育': { tags: ['学生群体', '家长群体', '教培从业者', '终身学习者'], desc: '关注知识获取、技能提升和教育方法的广泛学习群体。' },
+    '电商': { tags: ['电商卖家', '品牌方', '创业团队', '运营人员'], desc: '从事电商经营、品牌建设和在线零售的商家和从业者群体。' },
+    '媒体': { tags: ['自媒体人', '内容创作者', '品牌策划', '营销人员'], desc: '关注内容创作、传播策略和品牌建设的传媒行业从业者。' },
+    '制造业': { tags: ['工厂管理者', '供应链从业者', '制造业创业者', '工程师'], desc: '关注生产管理、供应链优化和智能制造的制造业从业者。' },
+    '服务业': { tags: ['门店老板', '服务行业从业者', '连锁经营管理者', '创业团队'], desc: '从事线下服务、门店运营和客户管理的服务业从业者。' },
+    '医疗健康': { tags: ['医疗从业者', '健康管理者', '患者群体', '健康关注者'], desc: '关注医疗健康知识、疾病管理和健康生活方式的广泛人群。' },
+    '其他': { tags: ['职场人士', '创业者', '自由职业者', '转行者'], desc: '希望提升个人能力、探索职业发展路径的广泛职场人群。' }
+};
+
+// 内容频率推荐规则
+var contentFrequencyRules = {
+    '5小时以内': { frequency: '每周1-2篇深度内容', strategy: '重质不重量，专注输出深度干货和高质量长文' },
+    '5-10小时': { frequency: '每周3-4篇优质内容', strategy: '以图文为主，搭配短观点，保持稳定更新节奏' },
+    '10-20小时': { frequency: '每日更新，每周5-7篇', strategy: '多形式内容矩阵，图文+短视频+直播交替输出' },
+    '20小时以上': { frequency: '日更+直播+社群运营', strategy: '全平台运营，日更图文/视频+每周直播+社群互动' }
+};
+
+// 变现路径推荐规则
+function generateMonetizationPath(d) {
+    var paths = [];
+
+    // 第一阶梯：免费内容引流
+    paths.push({
+        level: 'free',
+        icon: '&#127881;',
+        title: '免费内容引流',
+        desc: '在公众号/小红书/抖音发布优质内容，建立专业形象，积累首批粉丝（目标：1000+关注）'
+    });
+
+    // 第二阶梯：低价产品
+    if (d.skills.includes('教学') || d.skills.includes('写作') || d.goals.includes('知识付费')) {
+        paths.push({
+            level: 'low',
+            icon: '&#128218;',
+            title: '低价训练营/电子书',
+            desc: '推出99-299元的入门训练营或电子书，验证付费意愿，完成首批变现（目标：月入3000+）'
+        });
+    } else {
+        paths.push({
+            level: 'low',
+            icon: '&#128218;',
+            title: '低价知识产品',
+            desc: '推出99-199元的入门级知识产品或工具包，测试市场反馈，积累付费用户（目标：月入3000+）'
+        });
+    }
+
+    // 第三阶梯：中价产品
+    if (d.skills.includes('管理') || d.experience >= 5) {
+        paths.push({
+            level: 'mid',
+            icon: '&#128200;',
+            title: '体系化课程/企业培训',
+            desc: '推出999-2999元的体系化课程或企业内训服务，建立行业口碑（目标：月入2万+）'
+        });
+    } else {
+        paths.push({
+            level: 'mid',
+            icon: '&#128200;',
+            title: '系统课程/会员社群',
+            desc: '推出499-1999元的系统课程或年度会员社群，提供持续价值（目标：月入1万+）'
+        });
+    }
+
+    // 第四阶梯：高价咨询
+    if (d.goals.includes('品牌合作')) {
+        paths.push({
+            level: 'high',
+            icon: '&#11088;',
+            title: '品牌合作+1v1深度咨询',
+            desc: '承接品牌商业合作，提供5000+元的1v1深度咨询服务，实现高客单价变现（目标：月入5万+）'
+        });
+    } else {
+        paths.push({
+            level: 'high',
+            icon: '&#11088;',
+            title: '1v1深度咨询/年度顾问',
+            desc: '提供5000-20000元的1v1深度咨询或年度顾问服务，服务高净值客户（目标：月入5万+）'
+        });
+    }
+
+    return paths;
+}
+
+// 30天行动清单生成
+function generateActionPlan(d) {
+    var plan = {};
+    var freq = contentFrequencyRules[d.time];
+
+    // 第一周：定位与账号搭建
+    plan.week1 = [
+        '确定IP名称、头像和个人简介，完成各平台账号注册（公众号、小红书、抖音）',
+        '研究同领域3-5个对标账号，分析其内容结构和粉丝画像',
+        '输出第一篇"我是谁"的个人故事内容，建立人设认知',
+        '梳理自己的知识体系，列出未来1个月的内容选题清单（至少20个选题）'
+    ];
+
+    // 第二周：内容创作与发布
+    plan.week2 = [
+        '按照「' + freq.frequency + '」的节奏开始稳定发布内容',
+        '专注输出' + d.skills.slice(0, 2).join('和') + '相关的深度干货内容',
+        '每篇内容发布后主动在评论区与读者互动，回复率保持100%',
+        '加入2-3个相关社群，以专业内容建立初步影响力'
+    ];
+
+    // 第三周：互动与增长
+    plan.week3 = [
+        '分析前两周数据，找出爆款内容的共性特征，优化内容方向',
+        '主动与同领域KOL互动、评论，争取交叉曝光机会',
+        '策划一次话题互动或抽奖活动，刺激粉丝增长',
+        '开始收集用户高频问题，为后续知识产品做需求验证'
+    ];
+
+    // 第四周：变现测试与优化
+    plan.week4 = [
+        '基于用户反馈，设计第一个低价知识产品（如99元训练营或电子书）',
+        '发布产品预告，通过社群和朋友圈进行预热',
+        '正式上线低价产品，完成首批付费转化',
+        '复盘第一个月数据，制定下个月的内容和运营计划'
+    ];
+
+    return plan;
+}
+
+// 差异化优势分析
+function generateAdvantages(d) {
+    var advantages = [];
+
+    // 技能组合优势
+    if (d.skills.length >= 3) {
+        advantages.push({
+            title: '多元技能交叉优势',
+            desc: '你同时具备' + d.skills.join('、') + '等多项技能，这种跨界组合在IP领域是稀缺资源，可以打造"复合型专家"的独特定位，竞争对手难以复制。'
+        });
+    } else if (d.skills.length >= 2) {
+        advantages.push({
+            title: '技能组合壁垒',
+            desc: '你的' + d.skills.join(' + ') + '技能组合形成了差异化壁垒，单一技能者很难同时覆盖这两个维度，这是你的核心护城河。'
+        });
+    }
+
+    // 行业经验优势
+    if (d.experience >= 10) {
+        advantages.push({
+            title: '资深行业沉淀',
+            desc: d.experience + '年的行业深耕让你拥有深厚的实战经验和人脉资源，这些"隐性知识"是新人无法快速获取的，是你的重要信任背书。'
+        });
+    } else if (d.experience >= 5) {
+        advantages.push({
+            title: '实战经验积累',
+            desc: d.experience + '年的行业经验意味着你已度过新手期，拥有足够的实战案例和方法论沉淀，具备体系化输出的基础。'
+        });
+    } else {
+        advantages.push({
+            title: '成长型视角',
+            desc: '作为' + d.experience + '年经验的从业者，你正处于快速成长期，可以以"成长陪伴者"的视角记录学习过程，与同阶段读者建立深度共鸣。'
+        });
+    }
+
+    // 行业稀缺性
+    var industryMap = {
+        '制造业': '制造业的IP内容创作者相对稀缺，你在这个领域有先发优势',
+        '医疗健康': '医疗健康领域的专业IP存在巨大内容缺口，专业背景是强信任锚点',
+        '金融': '金融行业的专业壁垒高，你的行业经验自带权威感',
+        '服务业': '服务业实操经验型IP较少，你的实战经验极具差异化'
+    };
+    if (industryMap[d.industry]) {
+        advantages.push({
+            title: '行业稀缺红利',
+            desc: industryMap[d.industry] + '，容易在垂直赛道快速建立头部地位。'
+        });
+    }
+
+    // 目标驱动优势
+    if (d.goals.includes('副业收入') && d.goals.includes('打造影响力')) {
+        advantages.push({
+            title: '双轮驱动定位',
+            desc: '你同时追求影响力和变现收益，这意味着你会更注重内容的商业价值设计，有利于快速跑通"内容-粉丝-变现"的闭环。'
+        });
+    }
+
+    return advantages;
+}
+
+// ========== 生成完整报告 ==========
+function generateReport() {
+    // 用户信息展示
+    document.getElementById('reportUserInfo').innerHTML =
+        '<span>&#128100;</span> ' + formData.nickname + ' · ' + formData.job + ' · ' + formData.experience + '年经验';
+
+    // 生成IP方向推荐
+    var matchedDirections = [];
+    ipDirectionRules.forEach(function(rule) {
+        if (rule.match(formData)) {
+            matchedDirections.push({ name: rule.name, reason: rule.reason });
+        }
+    });
+
+    // 如果没有匹配到特定规则，使用通用方向
+    if (matchedDirections.length === 0) {
+        genericDirections.forEach(function(dir) {
+            var reason = dir.reason
+                .replace('{industry}', formData.industry)
+                .replace('{skills}', formData.skills.join('、'));
+            matchedDirections.push({ name: dir.name, reason: reason });
+        });
+    }
+
+    // 取前3个推荐
+    matchedDirections = matchedDirections.slice(0, 3);
+
+    // 目标人群
+    var audience = audienceRules[formData.industry] || audienceRules['其他'];
+
+    // 内容策略
+    var freq = contentFrequencyRules[formData.time];
+
+    // 根据技能推荐内容栏目
+    var contentColumns = generateContentColumns(formData);
+
+    // 变现路径
+    var monetizationPaths = generateMonetizationPath(formData);
+
+    // 30天行动清单
+    var actionPlan = generateActionPlan(formData);
+
+    // 差异化优势
+    var advantages = generateAdvantages(formData);
+
+    // 构建报告HTML
+    var html = '';
+
+    // 1. IP定位建议
+    html += '<div class="report-card">';
+    html += '<div class="report-card-title"><div class="report-card-icon">&#127919;</div>IP定位建议</div>';
+    matchedDirections.forEach(function(dir) {
+        html += '<div class="ip-direction">';
+        html += '<div class="ip-direction-name">&#11088; ' + dir.name + '</div>';
+        html += '<div class="ip-direction-reason">' + dir.reason + '</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+
+    // 2. 目标人群画像
+    html += '<div class="report-card">';
+    html += '<div class="report-card-title"><div class="report-card-icon">&#128101;</div>目标人群画像</div>';
+    html += '<div class="audience-tags">';
+    audience.tags.forEach(function(tag) {
+        html += '<span class="audience-tag">' + tag + '</span>';
+    });
+    html += '</div>';
+    html += '<div class="audience-desc">' + audience.desc + '</div>';
+    html += '</div>';
+
+    // 3. 内容策略
+    html += '<div class="report-card">';
+    html += '<div class="report-card-title"><div class="report-card-icon">&#128221;</div>内容策略</div>';
+    html += '<p style="color:var(--text-secondary); font-size:14px; margin-bottom:16px;">' + freq.strategy + '，建议发布频率：' + freq.frequency + '</p>';
+    contentColumns.forEach(function(col, idx) {
+        html += '<div class="content-strategy-item">';
+        html += '<div class="content-strategy-num">' + (idx + 1) + '</div>';
+        html += '<div class="content-strategy-info">';
+        html += '<h4>' + col.name + '</h4>';
+        html += '<p>' + col.desc + '</p>';
+        html += '<span class="content-strategy-ratio">占比 ' + col.ratio + '</span>';
+        html += '</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+
+    // 4. 变现路径
+    html += '<div class="report-card">';
+    html += '<div class="report-card-title"><div class="report-card-icon">&#128176;</div>变现路径</div>';
+    html += '<div class="monetization-ladder">';
+    monetizationPaths.forEach(function(path) {
+        html += '<div class="monetization-step">';
+        html += '<div class="monetization-step-icon ' + path.level + '">' + path.icon + '</div>';
+        html += '<div class="monetization-step-content">';
+        html += '<h4>' + path.title + '</h4>';
+        html += '<p>' + path.desc + '</p>';
+        html += '</div>';
+        html += '</div>';
+    });
+    html += '</div>';
+    html += '</div>';
+
+    // 5. 30天行动清单
+    html += '<div class="report-card">';
+    html += '<div class="report-card-title"><div class="report-card-icon">&#128197;</div>30天行动清单</div>';
+    html += '<div class="action-week">';
+    html += '<div class="action-week-title">第一周：定位与账号搭建</div>';
+    html += '<ul class="action-list">';
+    actionPlan.week1.forEach(function(task) {
+        html += '<li>' + task + '</li>';
+    });
+    html += '</ul></div>';
+    html += '<div class="action-week">';
+    html += '<div class="action-week-title">第二周：内容创作与发布</div>';
+    html += '<ul class="action-list">';
+    actionPlan.week2.forEach(function(task) {
+        html += '<li>' + task + '</li>';
+    });
+    html += '</ul></div>';
+    html += '<div class="action-week">';
+    html += '<div class="action-week-title">第三周：互动与增长</div>';
+    html += '<ul class="action-list">';
+    actionPlan.week3.forEach(function(task) {
+        html += '<li>' + task + '</li>';
+    });
+    html += '</ul></div>';
+    html += '<div class="action-week">';
+    html += '<div class="action-week-title">第四周：变现测试与优化</div>';
+    html += '<ul class="action-list">';
+    actionPlan.week4.forEach(function(task) {
+        html += '<li>' + task + '</li>';
+    });
+    html += '</ul></div>';
+    html += '</div>';
+
+    // 6. 差异化优势
+    html += '<div class="report-card">';
+    html += '<div class="report-card-title"><div class="report-card-icon">&#128170;</div>差异化优势</div>';
+    advantages.forEach(function(adv) {
+        html += '<div class="advantage-item">';
+        html += '<h4>' + adv.title + '</h4>';
+        html += '<p>' + adv.desc + '</p>';
+        html += '</div>';
+    });
+    html += '</div>';
+
+    document.getElementById('reportContent').innerHTML = html;
+}
+
+// 根据技能生成内容栏目推荐
+function generateContentColumns(d) {
+    var columns = [];
+
+    // 根据技能匹配内容栏目
+    if (d.skills.includes('运营') || d.skills.includes('数据分析')) {
+        columns.push({ name: '实战拆解系列', desc: '深度拆解真实案例，分享运营策略和数据分析方法论', ratio: '40%' });
+    }
+    if (d.skills.includes('技术') || d.skills.includes('产品')) {
+        columns.push({ name: '硬核知识科普', desc: '将专业技术和产品知识转化为通俗易懂的内容', ratio: '30%' });
+    }
+    if (d.skills.includes('写作') || d.skills.includes('教学')) {
+        columns.push({ name: '方法论干货合集', desc: '体系化输出可复用的方法论和实操指南', ratio: '35%' });
+    }
+    if (d.skills.includes('设计') || d.skills.includes('视频制作')) {
+        columns.push({ name: '视觉化教程', desc: '用图解、视频等形式展示实操过程和技巧', ratio: '30%' });
+    }
+    if (d.skills.includes('销售') || d.skills.includes('管理')) {
+        columns.push({ name: '职场/商业洞察', desc: '分享销售技巧、管理经验和商业思维', ratio: '35%' });
+    }
+
+    // 如果没有匹配到特定栏目，使用通用推荐
+    if (columns.length === 0) {
+        columns.push({ name: '行业深度分析', desc: '基于你的行业经验，输出有深度的行业观察和趋势分析', ratio: '40%' });
+    }
+
+    // 补充通用栏目
+    columns.push({ name: '个人成长故事', desc: '分享你的职业经历、踩坑经验和成长感悟，拉近与读者的距离', ratio: '20%' });
+
+    // 确保最多3个栏目
+    if (columns.length > 3) {
+        columns = columns.slice(0, 3);
+        // 调整比例
+        columns[0].ratio = '40%';
+        columns[1].ratio = '35%';
+        columns[2].ratio = '25%';
+    } else if (columns.length === 2) {
+        columns[0].ratio = '60%';
+        columns[1].ratio = '40%';
+    }
+
+    return columns;
+}
+
+// ========== 报告卡片淡入动画 ==========
+function animateReportCards() {
+    var cards = document.querySelectorAll('#reportContent .report-card');
+    cards.forEach(function(card, index) {
+        setTimeout(function() {
+            card.classList.add('visible');
+        }, index * 200);
+    });
+}
+
+// ========== 关于工具弹窗 ==========
+function showAboutModal() {
+    document.getElementById('aboutModal').classList.add('show');
+}
+
+function closeAboutModal() {
+    document.getElementById('aboutModal').classList.remove('show');
+}
+
+// 点击遮罩关闭弹窗
+document.getElementById('aboutModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAboutModal();
+    }
+});
+
+// ========== 实时输入验证清除错误 ==========
+document.getElementById('nickname').addEventListener('input', function() {
+    if (this.value.trim()) showFieldError('nickname', 'error-nickname', false);
+});
+document.getElementById('job').addEventListener('input', function() {
+    if (this.value.trim()) showFieldError('job', 'error-job', false);
+});
+document.getElementById('experience').addEventListener('input', function() {
+    var val = parseInt(this.value);
+    if (val >= 1 && val <= 30) showFieldError('experience', 'error-experience', false);
+});
+document.getElementById('industry').addEventListener('change', function() {
+    if (this.value) showFieldError('industry', 'error-industry', false);
+});
+document.getElementById('strengths').addEventListener('input', function() {
+    if (this.value.trim()) showFieldError('strengths', 'error-strengths', false);
+});
+</script>
+</body>
+</html>
