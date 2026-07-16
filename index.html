@@ -1085,34 +1085,19 @@ body {
     font-size: 15px;
 }
 
-.qr-placeholder {
-    width: 180px;
-    height: 180px;
+.qr-code-img {
+    width: 220px;
+    height: auto;
     margin: 0 auto 20px;
-    border: 2px dashed rgba(240, 147, 251, 0.4);
     border-radius: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.03);
+    display: block;
+    box-shadow: 0 8px 32px rgba(240, 147, 251, 0.2);
     transition: all 0.3s ease;
 }
 
-.qr-placeholder:hover {
-    border-color: var(--accent);
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.qr-placeholder-icon {
-    font-size: 48px;
-    margin-bottom: 8px;
-    opacity: 0.5;
-}
-
-.qr-placeholder-text {
-    font-size: 13px;
-    color: var(--text-muted);
+.qr-code-img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 40px rgba(240, 147, 251, 0.3);
 }
 
 .report-actions {
@@ -1485,10 +1470,7 @@ body {
             <div class="cta-section">
                 <h3>扫码加微信，获取1v1深度咨询</h3>
                 <p>龙哥领航 · AI轻创业导师 | 字节/美团/滴滴/贝壳多年大厂运营经验</p>
-                <div class="qr-placeholder">
-                    <div class="qr-placeholder-icon">&#128279;</div>
-                    <div class="qr-placeholder-text">微信二维码占位</div>
-                </div>
+                <img src="assets/wechat-qr.png" alt="微信二维码" class="qr-code-img">
                 <p style="font-size:13px; color:var(--text-muted);">扫描二维码，领取你的专属IP打造方案</p>
             </div>
 
